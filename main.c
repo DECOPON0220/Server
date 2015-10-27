@@ -32,8 +32,8 @@ int DebugOut=OFF;
 int StatusFlag=STA_DISCOVER;
 int EndFlag=OFF;
 
-char routerMacAddr[SIZE_MAC];
-char routerIpAddr[SIZE_IP];
+char *routerMacAddr="dc:fb:02:aa:64:fa";
+char *routerIpAddr="192.168.20.1";
 char raspMacAddr[SIZE_MAC];
 char raspIpAddr[SIZE_IP];
 char dev1MacAddr[SIZE_MAC];
@@ -119,31 +119,13 @@ int AnalyzePacket(int deviceNo,u_char *data,int size)
 	 (myproto->ip_dst==inet_addr(dev2IpAddr))
 	 ){
 	printf("Recieve Approval Packet\n");
+	my_ether_ntoa_r(eh->ether_shost, raspMacAddr, sizeof(raspMacAddr));
 	return(-1);
       }
     default:
       break;
     }
   }
-  //
-
-
-  // Check My Protocol
-  /*
-  if(StatusFlag==STA_DISCOVER) {
-    if(chkMyProtocol(data, raspMacAddr, dev1MacAddr, raspIpAddr, dev1IpAddr, DISCOVER, size)==-1){
-      StatusFlag=STA_APPROVAL;
-      return(-1);
-    }
-  } else if (StatusFlag==STA_APPROVAL) {
-    if(chkMyProtocol(data, raspMacAddr, dev1MacAddr, allocIpAddr, dev1IpAddr, APPROVAL, size)==-1){
-      strcpy(raspIpAddr, allocIpAddr);
-      StatusFlag=STA_WAIT;
-      return(-1);
-    }
-  }
-  */
-
   return(0);
 }
 
@@ -164,57 +146,47 @@ int RewritePacket (int deviceNo, u_char *data, int size) {
   ptr+=sizeof(struct ether_header);
   lest-=sizeof(struct ether_header);
 
-  char dMACaddr[18];
-  char sMACaddr[18];;
+  char dMacAddr[18];
+  char sMacAddr[18];
 
   // Get dMAC, sMAC
-  my_ether_ntoa_r(eh->ether_dhost, dMACaddr, sizeof(dMACaddr));
-  my_ether_ntoa_r(eh->ether_shost, sMACaddr, sizeof(sMACaddr));
-
-  // wirelessNIC -> physicalNIC
-  if(deviceNo==0){
-    // Rewrite MAC Address
-    my_ether_aton_r(dev2MacAddr, eh->ether_shost);
-    if(strncmp(dMACaddr, dev1MacAddr, SIZE_MAC)==0){
-      my_ether_aton_r(routerMacAddr, eh->ether_dhost);
-    }
+  my_ether_ntoa_r(eh->ether_dhost, dMacAddr, sizeof(dMacAddr));
+  my_ether_ntoa_r(eh->ether_shost, sMacAddr, sizeof(sMacAddr));
+  
+  // AP -> Router
+  if(strncmp(sMacAddr, raspMacAddr, SIZE_MAC)==0){
+    my_ether_aton_r(dev1MacAddr, eh->ether_shost);
+    my_ether_aton_r(routerMacAddr, eh->ether_dhost);
     
     // Case: IP
     if (ntohs(eh->ether_type)==ETHERTYPE_IP) {
       struct iphdr *iphdr;
       u_char option[1500];
       int optLen;
-	
+      
       iphdr=(struct iphdr *)ptr;
       ptr+=sizeof(struct iphdr);
       lest-=sizeof(struct iphdr);
-      
       optLen=iphdr->ihl*4-sizeof(struct iphdr);
-      
       if(optLen>0){
 	memcpy(option, ptr, optLen);
 	ptr+=optLen;
 	lest-=optLen;
       }
-
-      // Rewrite IP Address
-      if(iphdr->saddr==inet_addr(raspIpAddr)){
-	iphdr->saddr=inet_addr(dev2IpAddr);
-      }
-      if(iphdr->daddr==inet_addr(dev1IpAddr)){
-	iphdr->daddr=inet_addr(routerIpAddr);
-      }
       
+      // Rewrite IP Address
+      if(iphdr->saddr==inet_addr("192.168.30.11")){
+	iphdr->saddr=inet_addr(dev1IpAddr);
+      }
       iphdr->check=0;
       iphdr->check=calcChecksum2((u_char *)iphdr, sizeof(struct iphdr), option, optLen);
-
+      
       // Case : TCP
       if(iphdr->protocol==IPPROTO_TCP){
 	struct tcphdr *tcphdr;
 	
 	len=ntohs(iphdr->tot_len)-iphdr->ihl*4;
 	tcphdr=(struct tcphdr *)ptr;
-
 	tcphdr->check=0;
 	tcphdr->check=checkIPDATAchecksum(iphdr, ptr, len);
       }
@@ -227,26 +199,22 @@ int RewritePacket (int deviceNo, u_char *data, int size) {
 	udphdr->check=0;
       }
     }
-    // physicalNIC -> wirelessNIC
-  } else if(deviceNo==1){
-    // Rewrite MAC Address
-    my_ether_aton_r(dev1MacAddr, eh->ether_shost);
-    if(strncmp(dMACaddr, dev2MacAddr, SIZE_MAC)==0){
-      my_ether_aton_r(raspMacAddr, eh->ether_dhost);
-    }
+  }
+  // Router -> AP
+  else if (strncmp(dMacAddr, dev1MacAddr, SIZE_MAC)==0) {
+    my_ether_aton_r(raspMacAddr, eh->ether_dhost);
+    my_ether_aton_r(dev2MacAddr, eh->ether_shost);
 
     // Case: IP
     if (ntohs(eh->ether_type)==ETHERTYPE_IP) {
       struct iphdr *iphdr;
       u_char option[1500];
       int optLen;
-	
+      
       iphdr=(struct iphdr *)ptr;
       ptr+=sizeof(struct iphdr);
       lest-=sizeof(struct iphdr);
-      
       optLen=iphdr->ihl*4-sizeof(struct iphdr);
-      
       if(optLen>0){
 	memcpy(option, ptr, optLen);
 	ptr+=optLen;
@@ -254,23 +222,18 @@ int RewritePacket (int deviceNo, u_char *data, int size) {
       }
       
       // Rewrite IP Address
-      if(iphdr->saddr==inet_addr(routerIpAddr)){
-	iphdr->saddr=inet_addr(dev1IpAddr);
+      if(iphdr->daddr==inet_addr(dev1IpAddr)){
+	iphdr->daddr=inet_addr("192.168.30.11");
       }
-      if(iphdr->daddr==inet_addr(dev2IpAddr)){
-	iphdr->daddr=inet_addr(raspIpAddr);
-      }
-       
       iphdr->check=0;
       iphdr->check=calcChecksum2((u_char *)iphdr, sizeof(struct iphdr), option, optLen);
-
+      
       // Case : TCP
       if(iphdr->protocol==IPPROTO_TCP){
 	struct tcphdr *tcphdr;
 	
 	len=ntohs(iphdr->tot_len)-iphdr->ihl*4;
 	tcphdr=(struct tcphdr *)ptr;
-
 	tcphdr->check=0;
 	tcphdr->check=checkIPDATAchecksum(iphdr, ptr, len);
       }
@@ -331,8 +294,8 @@ int Bridge()
 	    perror("read");
 	  }
 	  else{
-	    //if(AnalyzePacket(i,buf,size)!=-1 && RewritePacket(i,buf,size)!=-1){
-	    if(AnalyzePacket(i,buf,size)!=-1){
+	    if(AnalyzePacket(i,buf,size)!=-1 && RewritePacket(i,buf,size)!=-1){
+	    //if(AnalyzePacket(i,buf,size)!=-1){
 	      if((size=write(Device[(!i)].soc,buf,size))<=0){
 		//perror("write");
 	      }
