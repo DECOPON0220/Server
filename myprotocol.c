@@ -56,17 +56,14 @@ int chkMyProtocol(u_char *data, char *smac, char *dmac, char *sip, char *dip, u_
   u_char              *ptr;
   int                 lest;
   struct ether_header *eh;
-  
   ptr=data;
   lest=size;
-  
   eh=(struct ether_header *)ptr;
   ptr+=sizeof(struct ether_header);
   lest-=sizeof(struct ether_header);
 
   char sMACaddr[18];
   char dMACaddr[18];
-  
   my_ether_ntoa_r(eh->ether_shost, sMACaddr, sizeof(sMACaddr));
   my_ether_ntoa_r(eh->ether_dhost, dMACaddr, sizeof(dMACaddr));
 

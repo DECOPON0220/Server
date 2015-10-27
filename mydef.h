@@ -6,6 +6,7 @@
 #define DISCOVER     0x1001
 #define OFFER        0x1002
 #define APPROVAL     0x1003
+#define INITAP       0x1006
 #define MYPROTOCOL   0x1010
 #define STA_DISCOVER 1
 #define STA_APPROVAL 2
