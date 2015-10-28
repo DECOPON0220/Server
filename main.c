@@ -26,11 +26,13 @@
 
 // --- Global Variable ---
 const char *NameDev1="eth0";    // Router Side
-const char *NameDev2="eth1";    // AP Side: 192.168.30.3
+const char *NameDev2="eth1";    // AP Side: 192.168.30~
+const char *IpAp1="192.168.30.1";
+
 
 int DebugOut=OFF;
-int StatusFlag=STA_DISCOVER;
 int EndFlag=OFF;
+int StatusFlag=STA_DISCOVER;
 
 char *routerMacAddr="dc:fb:02:aa:64:fa";
 char *routerIpAddr="192.168.20.1";
@@ -39,8 +41,7 @@ char raspIpAddr[SIZE_IP];
 char dev1MacAddr[SIZE_MAC];
 char dev2MacAddr[SIZE_MAC];
 char dev1IpAddr[SIZE_MAC];
-char *dev2IpAddr="192.168.30.3";
-//char allocIpAddr[SIZE_IP];
+char dev2IpAddr[SIZE_IP];
 
 DEVICE	Device[2];
 
@@ -66,7 +67,7 @@ int AnalyzePacket(int deviceNo,u_char *data,int size)
     PrintEtherHeader(eh,stderr);
   }
 
-  //
+  // Init AP
   if(ntohs(eh->ether_type)==MYPROTOCOL){
     MYPROTO *myproto;
     myproto=(MYPROTO *)ptr;
@@ -87,11 +88,12 @@ int AnalyzePacket(int deviceNo,u_char *data,int size)
 	 (myproto->ip_src==inet_addr(sip)) &&
 	 (myproto->ip_dst==inet_addr(dip))
 	 ){
-	printf("Recieve InitAP Packet\n");
+	printf("--- Recieve Init AP Packet ----\n");
 	my_ether_ntoa_r(eh->ether_shost, init_sMacAddr, sizeof(init_sMacAddr));
 	
-	printf("Send InitAP Packet\n");
-	create_myprotocol(Device[1].soc, dev2MacAddr, init_sMacAddr, dev2IpAddr, "192.168.30.1", INITAP);
+	printf("--- Send Build AP Packet ------\n");
+	printf("Build [%s] Access Point.\nThis Mac Address is \"%s\"\n", IpAp1, init_sMacAddr);
+	create_myprotocol(Device[1].soc, dev2MacAddr, init_sMacAddr, dev2IpAddr, (char *)IpAp1, INITAP);
 
 	return(-1);
       }
@@ -104,11 +106,15 @@ int AnalyzePacket(int deviceNo,u_char *data,int size)
 	 (myproto->ip_src==inet_addr(sip)) &&
 	 (myproto->ip_dst==inet_addr(dip))
 	 ){
-	printf("Recieve Discover Packet\n");
+	printf("--- Recieve Discover Packet ---\n");
 	my_ether_ntoa_r(eh->ether_shost, disc_sMacAddr, sizeof(disc_sMacAddr));
 
-	printf("Send Offer Packet\n");
-	create_myprotocol(Device[1].soc, dev2MacAddr, disc_sMacAddr, dev2IpAddr, "192.168.30.11", OFFER);
+	printf("--- Send Offer Packet ---------\n");
+	// --- Make Alloc IP Address ----- //
+	strncpy(raspIpAddr, IpAp1, SIZE_IP);
+	plusIpAddr(raspIpAddr, 10);
+	// ------------------------------- //
+	create_myprotocol(Device[1].soc, dev2MacAddr, disc_sMacAddr, dev2IpAddr, raspIpAddr, OFFER);
 
 	return(-1);
       }
@@ -118,7 +124,7 @@ int AnalyzePacket(int deviceNo,u_char *data,int size)
       if((strncmp(app_dMacAddr, dev2MacAddr, SIZE_MAC)==0) &&
 	 (myproto->ip_dst==inet_addr(dev2IpAddr))
 	 ){
-	printf("Recieve Approval Packet\n");
+	printf("--- Recieve Approval Packet ---\n");
 	my_ether_ntoa_r(eh->ether_shost, raspMacAddr, sizeof(raspMacAddr));
 	return(-1);
       }
@@ -250,21 +256,6 @@ int RewritePacket (int deviceNo, u_char *data, int size) {
   return(0);
 }
 
-int sendMyProtocol()
-{
-  while(EndFlag==0){
-    if(StatusFlag==2){
-      printf("Send Offer Packet\n");
-      
-      //strcpy(allocIpAddr, "192.168.30.11");
-      //create_myprotocol(Device[0].soc, dev1MacAddr, raspMacAddr, dev1IpAddr, allocIpAddr, OFFER);
-      
-      usleep(10000 * 100);
-    }
-  }
-  return(0);
-}
-
 int Bridge()
 {
   struct pollfd	targets[2];
@@ -295,7 +286,6 @@ int Bridge()
 	  }
 	  else{
 	    if(AnalyzePacket(i,buf,size)!=-1 && RewritePacket(i,buf,size)!=-1){
-	    //if(AnalyzePacket(i,buf,size)!=-1){
 	      if((size=write(Device[(!i)].soc,buf,size))<=0){
 		//perror("write");
 	      }
@@ -312,7 +302,7 @@ int Bridge()
 
 int DisableIpForward()
 {
-  FILE    *fp;
+  FILE *fp;
   if((fp=fopen("/proc/sys/net/ipv4/ip_forward","w"))==NULL){
     DebugPrintf("cannot write /proc/sys/net/ipv4/ip_forward\n");
     return(-1);
@@ -334,27 +324,29 @@ void *thread1 (void *args) {
   return NULL;
 }
 
-void *thread2 (void *args) {
-  DebugPrintf("Create Thread2\n");
-  sendMyProtocol();
-  return NULL;
-}
-
 int main(int argc,char *argv[],char *envp[])
 {
-  pthread_t th1,th2;
+  pthread_t th1;
   
-  getArpCache();
+  //getArpCache();
   
+  // Make Dev2 IP ADDR
+  strncpy(dev2IpAddr, IpAp1, SIZE_IP);
+  plusIpAddr(dev2IpAddr,2);
   // Init Interface IP Address
-  if(chgIfIp(NameDev2, inet_addr(dev2IpAddr))==0){    // 192.168.30.3
-    DebugPrintf("Change IP Address\n%s IP: %s\n", NameDev2, dev2IpAddr);
+  if(chgIfIp(NameDev2, inet_addr(dev2IpAddr))!=0){
+    DebugPrintf("chgIfIp:error:%s\n",NameDev2);
+    return(-1);
   }
 
   // Get IP and Mac Address
   getIfMac(NameDev1, dev1MacAddr);
   getIfMac(NameDev2, dev2MacAddr);
-  getIfIp(NameDev1, dev1IpAddr);    // 192.168.20.*
+  getIfIp(NameDev1, dev1IpAddr);
+
+  // Debug Print
+  printf("Mac Address of [%s] on [%s] is \"%s\"\n", dev1IpAddr, NameDev1, dev1MacAddr);
+  printf("Mac Address of [%s] on [%s] is \"%s\"\n", dev2IpAddr, NameDev2, dev2MacAddr);
 
   // Init Socket
   if((Device[0].soc=InitRawSocket(NameDev1,1,0))==-1){
@@ -384,13 +376,9 @@ int main(int argc,char *argv[],char *envp[])
   if ((status = pthread_create(&th1, NULL, thread1, NULL)) != 0) {
     printf("pthread_create%s\n", strerror(status));
   }
-  if ((status = pthread_create(&th2, NULL, thread2, NULL)) != 0) {
-    printf("pthread_create%s\n", strerror(status));
-  }
   DebugPrintf("bridge end\n");
 
   pthread_join(th1, NULL);
-  pthread_join(th2, NULL);
 
   close(Device[0].soc);
   close(Device[1].soc);
