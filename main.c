@@ -28,6 +28,7 @@
 const char *NameDev1="eth0";    // Router Side
 const char *NameDev2="eth1";    // AP Side: 192.168.30~
 const char *IpAp1="192.168.30.1";
+// const char *IpAp2="192.168.40.1";
 
 
 int DebugOut=OFF;
