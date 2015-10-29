@@ -5,14 +5,10 @@
 #include <netinet/if_ether.h>
 #include <netinet/ip.h>
 #include "mydef.h"
-#include "mystruct.h"
 #include "netutil.h"
-#include "ifutil.h"
+#include "myprotocol.h"
 
 
-// tmp
-extern const char *NameDev1;
-extern int StatusFlag;
 
 void make_ethernet(struct ether_header *eth,unsigned char *ether_dhost,
 		   unsigned char *ether_shost,u_int16_t ether_type)
@@ -29,7 +25,8 @@ void make_mydhcp(MYPROTO *myproto,char *sip,char *dip,u_short type)
   myproto->type=htons(type);
 }
 
-void create_myprotocol(int soc,char *smac,char *dmac,char *sip,char *dip,u_short type)
+void create_myprotocol(int soc,char *smac,char *dmac,char *sip,
+		       char *dip,u_short type)
 {
   char   *sp;
   char   send_buff[MAXSIZE];
@@ -51,7 +48,8 @@ void create_myprotocol(int soc,char *smac,char *dmac,char *sip,char *dip,u_short
   }
 }
 
-int chkMyProtocol(u_char *data, char *smac, char *dmac, char *sip, char *dip, u_short type, int size)
+int chkMyProtocol(u_char *data, char *smac, char *dmac, char *sip,
+		  char *dip, u_short type, int size)
 {
   u_char              *ptr;
   int                 lest;

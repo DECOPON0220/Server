@@ -1,13 +1,12 @@
 #define MAXSIZE      8192
+#define SIZE_SSID    32
+#define SIZE_NAME    16
 #define SIZE_MAC     18
 #define SIZE_IP      15
 #define ON           1
 #define OFF          0
-#define DISCOVER     0x1001
-#define OFFER        0x1002
-#define APPROVAL     0x1003
-#define INITAP       0x1006
-#define MYPROTOCOL   0x1010
+#define TRUE         1
+#define FALSE        0
 #define STA_DISCOVER 1
 #define STA_APPROVAL 2
 #define STA_WAIT     3
