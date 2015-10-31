@@ -11,15 +11,15 @@ void AccessPoint_init(AccessPoint *this, const char *ipaddr)
   strcpy(this->addr, ipaddr);
   strcpy(this->raddr1, this->addr);
   strcpy(this->raddr2, this->addr);
-  p_func_getAddAddr(this->raddr1, 1);
-  p_func_getAddAddr(this->raddr2, 2);
-  p_func_initAllocAddr(this->alloc);
+  func_getAddAddr(this->raddr1, 1);
+  func_getAddAddr(this->raddr2, 2);
+  func_initAllocAddr(this->alloc);
 }
 
 char *AccessPoint_resrvAllocAddr(AccessPoint *this, char *macaddr)
 {
-  p_func_resrvAllocAddr(this, macaddr);
-  return(p_func_getAllocAddr(this->alloc, macaddr));
+  func_resrvAllocAddr(this, macaddr);
+  return(func_getAllocAddr(this->alloc, macaddr));
 }
 
 void AccessPoint_cfmAllocAddr(AccessPoint *this, char *macaddr)
@@ -73,7 +73,7 @@ void AccessPoint_printAllocAddr(AccessPoint *this)
   } 
 }
 
-char *p_func_getAddAddr(char *ipaddr, int addNum)
+char *func_getAddAddr(char *ipaddr, int addNum)
 {
   int lenIp, f_octet;
 
@@ -87,7 +87,7 @@ char *p_func_getAddAddr(char *ipaddr, int addNum)
   return(ipaddr);
 }
 
-void p_func_initAllocAddr(AllocAddr *this)
+void func_initAllocAddr(AllocAddr *this)
 {
   int i;
   for(i=0;i<NUM_ALLOC_IP;i++){
@@ -95,13 +95,13 @@ void p_func_initAllocAddr(AllocAddr *this)
   }
 }
 
-void p_func_resrvAllocAddr(AccessPoint *this, char *macaddr)
+void func_resrvAllocAddr(AccessPoint *this, char *macaddr)
 {
   int i;
   for(i=0;i<NUM_ALLOC_IP;i++){
     if(this->alloc[i].flag==OFF){
       strcpy(this->alloc[i].ipaddr, this->addr);
-      p_func_getAddAddr(this->alloc[i].ipaddr, i+3);
+      func_getAddAddr(this->alloc[i].ipaddr, i+3);
       strcpy(this->alloc[i].macaddr, macaddr);
       return;
     }
@@ -111,7 +111,7 @@ void p_func_resrvAllocAddr(AccessPoint *this, char *macaddr)
   }
 }
 
-char *p_func_getAllocAddr(AllocAddr *this, char *macaddr)
+char *func_getAllocAddr(AllocAddr *this, char *macaddr)
 {
   int i;
   for(i=0;i<NUM_ALLOC_IP;i++){

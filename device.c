@@ -18,15 +18,15 @@ extern int	DebugPerror(char *msg);
 void Device_init(Device *this, const char *name)
 {
   strcpy(this->name, name);
-  p_func_setSocket(this);
-  p_func_setMacAddr(this);
-  p_func_setIpAddr(this);
+  func_setSocket(this);
+  func_setMacAddr(this);
+  func_setIpAddr(this);
 }
 
 void Device_setIpAddr(Device *this, char *ipaddr)
 {
   strncpy(this->ipaddr, ipaddr, SIZE_IP);
-  p_func_confIpAddr(this->name, ipaddr);
+  func_confIpAddr(this->name, ipaddr);
 }
 
 char *Device_getName(Device *this)
@@ -60,7 +60,7 @@ void Device_del(Device *this)
   close(this->soc);
 }
 
-void p_func_setSocket(Device *this)
+void func_setSocket(Device *this)
 {
   struct ifreq	     ifreq;
   struct sockaddr_ll sa;
@@ -102,27 +102,27 @@ void p_func_setSocket(Device *this)
   this->soc=soc;
 }
 
-void p_func_setMacAddr(Device *this)
+void func_setMacAddr(Device *this)
 {
   struct ifreq ifreq;
   u_char       tmpAddr[6];
 
-  p_func_getDeviceInfo(this->name,&ifreq,SIOCGIFHWADDR);
+  func_getDeviceInfo(this->name,&ifreq,SIOCGIFHWADDR);
   
   int i;
   for(i=0;i<6;i++) tmpAddr[i]=(char)ifreq.ifr_hwaddr.sa_data[i];
   my_ether_ntoa_r(tmpAddr,this->macaddr,SIZE_MAC);
 }
 
-void p_func_setIpAddr(Device *this)
+void func_setIpAddr(Device *this)
 {
   struct ifreq ifreq;
   
-  p_func_getDeviceInfo(this->name,&ifreq,SIOCGIFADDR);
+  func_getDeviceInfo(this->name,&ifreq,SIOCGIFADDR);
   memcpy(this->ipaddr,inet_ntoa(((struct sockaddr_in *)&ifreq.ifr_addr)->sin_addr),SIZE_IP);
 }
 
-void p_func_confIpAddr(char *name, char *ip)
+void func_confIpAddr(char *name, char *ip)
 {
   int                fd;
   struct ifreq       ifr;
@@ -143,7 +143,7 @@ void p_func_confIpAddr(char *name, char *ip)
   close(fd);
 }
 
-struct ifreq *p_func_getDeviceInfo(char *name, struct ifreq *ifreq, int flavor)
+struct ifreq *func_getDeviceInfo(char *name, struct ifreq *ifreq, int flavor)
 {
   int fd;
 

@@ -1,6 +1,5 @@
 #define MAXSIZE      8192
 #define SIZE_SSID    32
-#define SIZE_NAME    16
 #define SIZE_MAC     18
 #define SIZE_IP      15
 #define ON           1

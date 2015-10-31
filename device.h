@@ -1,3 +1,5 @@
+#define SIZE_NAME 16
+
 typedef struct {
   char name[SIZE_NAME];
   int  soc;
@@ -15,8 +17,8 @@ char *Device_getIpAddr(Device *this);
 char *Device_getMacAddr(Device *this);
 void  Device_printInfo(Device *this);
 void  Device_del(Device *this);
-void  p_func_setSocket(Device *this);
-void  p_func_setMacAddr(Device *this);
-void  p_func_setIpAddr(Device *this);
-void  p_func_confIpAddr(char *name, char *ip);
-struct ifreq *p_func_getDeviceInfo(char *name, struct ifreq *ifreq, int flavor);
+void  func_setSocket(Device *this);
+void  func_setMacAddr(Device *this);
+void  func_setIpAddr(Device *this);
+void  func_confIpAddr(char *name, char *ip);
+struct ifreq *func_getDeviceInfo(char *name, struct ifreq *ifreq, int flavor);
